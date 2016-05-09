@@ -1,0 +1,30 @@
+#cloud-config
+
+hostname: "coreos3"
+
+# include one or more SSH public keys
+ssh_authorized_keys:
+  - ssh-rsa AAAAB3NzaC1yc2EAAAABJQAAAQEAk34OcqjQRi8xKC2Fu/OGFq04AuVvk6yR6Sls2gnaofVUAeFTqH3T3lLr2HQOQrWz9n7lQnWxkI/xQ8UHfICc124hZc+uixCnmJwgrmWmrmUGjpYbrra0HUDBsMEsLVDZ6NCHL+o5rPSOwfGa5KTiVUwT/FTEGpQwT+nnE7JSKnOzUIPNi52Hd1T+4aJL97Sz65I64jqjGojThUpTicLqMnayXa35j2mNRtIr8sRaZRLHBL815pBJ+3XOz7BGU+leTcfQOGJBy5DbTlXqkKN6E+UyuPpN5FlYxDWaQ7eZzbqQ+2RMAw7yHu6gPbxMNXBxegIkdLCZ9WguSpwuWvoXAQ==
+coreos:
+  etcd2:
+    # generate a new token for each unique cluster from https://discovery.etcd.io/new?size=3
+    # specify the initial size of your cluster with ?size=X
+    discovery: https://discovery.etcd.io/87b7b41c79b39f2a084c6b7a8123d6e5
+    advertise-client-urls: http://192.168.1.43:2379,http://192.168.1.43:4001
+    initial-advertise-peer-urls: http://192.168.1.43:2380
+    # listen on both the official ports and the legacy ports
+    # legacy ports can be omitted if your application doesn't depend on them
+    listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
+    listen-peer-urls: http://192.168.1.43:2380
+  units:
+    - name: etcd2.service
+      command: start
+    - name: fleet.service
+      command: start
+    - name: flanneld.service
+      command: start
+      drop-ins:
+      - name: 50-network-config.conf
+        content: |
+          [Service]
+          ExecStartPre=/usr/bin/etcdctl set /coreos.com/network/config '{"Network":"10.1.0.0/16", "Backend": {"Type": "vxlan"}}'
